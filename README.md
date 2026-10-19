@@ -28,4 +28,6 @@ Before publication:
 4. Purchase `italusbooks.com`, add it to the Vercel project, and follow Vercel's displayed DNS records.
 5. Confirm every production feature claim against the application release.
 
-The GitHub repository and Vercel deployment will be created only after local visual approval.
+Source repository: `https://github.com/jjanson123Java/italus_webiste`.
+
+The Vercel deployment and `italusbooks.com` domain connection are the next release steps.

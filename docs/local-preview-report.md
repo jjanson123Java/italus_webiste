@@ -5,7 +5,7 @@ Date: October 19, 2026
 ## Preview
 
 - URL: `http://127.0.0.1:8766/`
-- Delivery state: local only; not pushed to GitHub or deployed to Vercel.
+- Delivery state: published to GitHub; not yet deployed to Vercel.
 - Proposed production domain: `https://italusbooks.com`.
 
 ## Checks performed
