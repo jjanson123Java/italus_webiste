@@ -93,6 +93,9 @@ p { margin: 0 0 1rem; }
 label { display: grid; gap: .4rem; color: #e1d8c5; font-size: .9rem; }
 input, textarea, select { width: 100%; border: 1px solid var(--line); border-radius: 4px; background: #0b1512; color: var(--paper); padding: .8rem .9rem; }
 textarea { min-height: 150px; resize: vertical; }
+.consent-row { display: flex; align-items: flex-start; gap: .7rem; margin-top: 1rem; line-height: 1.45; }
+.consent-row input { flex: 0 0 auto; width: auto; margin-top: .2rem; accent-color: var(--gold); }
+.form-honeypot { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
 .form-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 1rem; margin-top: 1.2rem; }
 .form-status { color: var(--muted); font-size: .9rem; }
 .form-status[data-state='error'] { color: #ffb4a9; }

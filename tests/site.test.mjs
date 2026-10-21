@@ -25,8 +25,20 @@ test('validates realistic email input', () => {
   assert.equal(isValidEmail(''), false);
 });
 
-test('preview forms disclose that delivery is not live', () => {
-  assert.match(getFormConfirmation('waitlist'), /preview/i);
+for (const [page, source] of [['index.html', 'home'], ['updates.html', 'updates']]) {
+  test(`${page} has a production waitlist form with optional email consent`, async () => {
+    const html = await readFile(join(root, page), 'utf8');
+    assert.match(html, /data-waitlist-form/);
+    assert.match(html, new RegExp(`name="source" value="${source}"`));
+    assert.match(html, /name="website"[^>]+tabindex="-1"/);
+    assert.match(html, /type="checkbox" name="marketingOptIn"/);
+    assert.doesNotMatch(html, /type="checkbox" name="marketingOptIn"[^>]+(?:required|checked)/);
+    assert.match(html, /Email me Italus product releases, sales, and blog updates\. I understand I can unsubscribe at any time\./);
+    assert.doesNotMatch(html, /Preview form—delivery will be connected before launch\./);
+  });
+}
+
+test('non-waitlist preview forms retain their existing confirmation copy', () => {
   assert.match(getFormConfirmation('access'), /early access/i);
 });
 
