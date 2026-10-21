@@ -19,7 +19,7 @@ Allow an author who unsubscribed from Writer's Block in Beehiiv to explicitly re
 - The endpoint accepts only `POST` requests and a bounded raw request body.
 - It verifies Beehiiv's Svix `svix-id`, `svix-timestamp`, and `svix-signature` headers using `BEEHIIV_WEBHOOK_SECRET` before parsing or writing data.
 - Invalid signatures, stale timestamps, malformed JSON, and malformed unsubscribe payloads cause no database mutation.
-- Only `subscription.deleted` changes consent state; unrelated verified events are acknowledged without mutation.
+- `subscription.deleted` changes consent state to unsubscribed. A verified `subscription.confirmed` event restores consent and synchronization state using the provider event time; unrelated verified events are acknowledged without mutation.
 - Duplicate webhook delivery is idempotent. The same event cannot erase a newer explicit consent recorded after the event occurred.
 - Logs contain event IDs and safe phases only; they do not contain email addresses, request bodies, secrets, or provider responses.
 
@@ -30,7 +30,7 @@ Extend `beehiiv_sync_status` with `unsubscribed` and add `marketing_unsubscribed
 ## External configuration
 
 - Add `BEEHIIV_WEBHOOK_SECRET` as a Vercel Production secret.
-- Configure one Beehiiv webhook endpoint at `https://italusbooks.com/api/beehiiv-webhook` for `Subscription Deleted`.
+- Configure one Beehiiv webhook endpoint at `https://italusbooks.com/api/beehiiv-webhook` for `Subscription Deleted` and `Subscription Confirmed`.
 - Beehiiv webhooks require a paid Lite plan or above. The code can be deployed before the plan is enabled, but Neon cannot learn about Beehiiv unsubscribes until the endpoint is configured and active.
 
 ## Verification

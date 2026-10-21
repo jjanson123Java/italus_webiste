@@ -108,6 +108,22 @@ function createMemorySql() {
         });
         return { rows: [clone(row)] };
       }
+      if (operation === 'mark_confirmed') {
+        const [email, subscriptionId, occurredAt, now] = params;
+        const row = entries.get(email);
+        if (!row || (row.marketing_unsubscribed_at && row.marketing_unsubscribed_at > occurredAt)) {
+          return { rows: [] };
+        }
+        Object.assign(row, {
+          marketing_opt_in: true,
+          marketing_consent_at: occurredAt,
+          beehiiv_subscription_id: subscriptionId,
+          beehiiv_sync_status: 'synced',
+          beehiiv_synced_at: now,
+          updated_at: now
+        });
+        return { rows: [clone(row)] };
+      }
       if (operation === 'rate_limit') {
         const [requestKey, action, cutoff, now] = params;
         for (let index = attempts.length - 1; index >= 0; index -= 1) {
@@ -274,6 +290,44 @@ test('stale unsubscribe event cannot erase newer explicit consent', async () => 
   assert.equal(result, null);
   assert.equal(sql.entries.get(entry().email).marketing_opt_in, true);
   assert.equal(sql.entries.get(entry().email).beehiiv_sync_status, 'synced');
+});
+
+test('verified Beehiiv confirmation restores marketing consent in Neon', async () => {
+  const sql = createMemorySql();
+  let current = new Date('2026-10-21T12:00:00Z');
+  const store = createWaitlistStore({ sql, now: () => current });
+  await store.upsertEntry(entry({ marketingOptIn: true }));
+  await store.markBeehiivSynced(entry().email, 'sub_123');
+  await store.markBeehiivUnsubscribed(entry().email, new Date('2026-10-21T13:00:00Z'));
+
+  current = new Date('2026-10-21T14:01:00Z');
+  const confirmedAt = new Date('2026-10-21T14:00:00Z');
+  const result = await store.markBeehiivConfirmed(entry().email, 'sub_renewed', confirmedAt);
+
+  assert.equal(result.marketingOptIn, true);
+  assert.equal(result.marketingConsentAt.toISOString(), confirmedAt.toISOString());
+  assert.equal(result.beehiivSyncStatus, 'synced');
+  assert.equal(result.beehiivSubscriptionId, 'sub_renewed');
+  assert.equal(result.marketingUnsubscribedAt.toISOString(), '2026-10-21T13:00:00.000Z');
+});
+
+test('stale Beehiiv confirmation cannot override a newer unsubscribe', async () => {
+  const sql = createMemorySql();
+  let current = new Date('2026-10-21T12:00:00Z');
+  const store = createWaitlistStore({ sql, now: () => current });
+  await store.upsertEntry(entry({ marketingOptIn: true }));
+  await store.markBeehiivUnsubscribed(entry().email, new Date('2026-10-21T14:00:00Z'));
+
+  current = new Date('2026-10-21T15:00:00Z');
+  const result = await store.markBeehiivConfirmed(
+    entry().email,
+    'sub_stale',
+    new Date('2026-10-21T13:00:00Z')
+  );
+
+  assert.equal(result, null);
+  assert.equal(sql.entries.get(entry().email).marketing_opt_in, false);
+  assert.equal(sql.entries.get(entry().email).beehiiv_sync_status, 'unsubscribed');
 });
 
 test('tracks independent public and admin rate-limit buckets', async () => {

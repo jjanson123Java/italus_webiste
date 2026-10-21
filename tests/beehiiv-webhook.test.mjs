@@ -51,12 +51,15 @@ async function invoke(handler, req) {
 }
 
 function dependencies() {
-  const calls = [];
+  const calls = { unsubscribed: [], confirmed: [] };
   const logs = [];
   const handler = createBeehiivWebhookHandler({
     store: {
       async markBeehiivUnsubscribed(email, occurredAt) {
-        calls.push([email, occurredAt]);
+        calls.unsubscribed.push([email, occurredAt]);
+      },
+      async markBeehiivConfirmed(email, subscriptionId, occurredAt) {
+        calls.confirmed.push([email, subscriptionId, occurredAt]);
       }
     },
     env: { BEEHIIV_WEBHOOK_SECRET: secret },
@@ -70,7 +73,8 @@ test('accepts only POST requests', async () => {
   const result = await invoke(handler, signedRequest(event(), { method: 'GET' }));
   assert.equal(result.statusCode, 405);
   assert.equal(result.headers.allow, 'POST');
-  assert.equal(calls.length, 0);
+  assert.equal(calls.unsubscribed.length, 0);
+  assert.equal(calls.confirmed.length, 0);
 });
 
 test('rejects forged and stale signatures before database mutation', async () => {
@@ -87,8 +91,10 @@ test('rejects forged and stale signatures before database mutation', async () =>
 
   assert.equal(forgedResult.statusCode, 401);
   assert.equal(staleResult.statusCode, 401);
-  assert.equal(forged.calls.length, 0);
-  assert.equal(stale.calls.length, 0);
+  assert.equal(forged.calls.unsubscribed.length, 0);
+  assert.equal(forged.calls.confirmed.length, 0);
+  assert.equal(stale.calls.unsubscribed.length, 0);
+  assert.equal(stale.calls.confirmed.length, 0);
 });
 
 test('verified subscription deletion records normalized email and provider event time', async () => {
@@ -98,16 +104,33 @@ test('verified subscription deletion records normalized email and provider event
 
   assert.equal(result.statusCode, 200);
   assert.deepEqual(result.body, { ok: true });
-  assert.equal(calls.length, 1);
-  assert.equal(calls[0][0], 'ada@example.com');
-  assert.equal(calls[0][1].toISOString(), '2026-10-21T17:00:00.000Z');
+  assert.equal(calls.unsubscribed.length, 1);
+  assert.equal(calls.unsubscribed[0][0], 'ada@example.com');
+  assert.equal(calls.unsubscribed[0][1].toISOString(), '2026-10-21T17:00:00.000Z');
+});
+
+test('verified subscription confirmation records renewed consent in Neon', async () => {
+  const { handler, calls } = dependencies();
+  const result = await invoke(handler, signedRequest(event({
+    event_type: 'subscription.confirmed',
+    event_timestamp: 1792605600,
+    data: { email: ' Ada@Example.com ', id: 'sub_renewed', status: 'active' }
+  })));
+
+  assert.equal(result.statusCode, 200);
+  assert.deepEqual(result.body, { ok: true });
+  assert.equal(calls.confirmed.length, 1);
+  assert.equal(calls.confirmed[0][0], 'ada@example.com');
+  assert.equal(calls.confirmed[0][1], 'sub_renewed');
+  assert.equal(calls.confirmed[0][2].toISOString(), '2026-10-21T18:00:00.000Z');
 });
 
 test('acknowledges unrelated verified events without database mutation', async () => {
   const { handler, calls } = dependencies();
-  const result = await invoke(handler, signedRequest(event({ event_type: 'subscription.confirmed' })));
+  const result = await invoke(handler, signedRequest(event({ event_type: 'post.sent' })));
   assert.equal(result.statusCode, 200);
-  assert.equal(calls.length, 0);
+  assert.equal(calls.unsubscribed.length, 0);
+  assert.equal(calls.confirmed.length, 0);
 });
 
 test('rejects signed malformed JSON and malformed deletion payloads without leaking details', async () => {
@@ -122,8 +145,10 @@ test('rejects signed malformed JSON and malformed deletion payloads without leak
 
   assert.equal(badJsonResult.statusCode, 400);
   assert.equal(badEventResult.statusCode, 400);
-  assert.equal(malformedJson.calls.length, 0);
-  assert.equal(malformedEvent.calls.length, 0);
+  assert.equal(malformedJson.calls.unsubscribed.length, 0);
+  assert.equal(malformedJson.calls.confirmed.length, 0);
+  assert.equal(malformedEvent.calls.unsubscribed.length, 0);
+  assert.equal(malformedEvent.calls.confirmed.length, 0);
   assert.doesNotMatch(JSON.stringify([...malformedJson.logs, ...malformedEvent.logs]), /ada@example\.com|\{bad json/);
 });
 

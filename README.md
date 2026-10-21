@@ -24,7 +24,7 @@ Copy `.env.example` to `.env.local` only for local development. Never commit cre
 - `WAITLIST_ADMIN_PASSWORD` protects `/admin-waitlist`; rotate it after initial verification and whenever exposure is suspected.
 - `WAITLIST_IP_HASH_SECRET` creates opaque abuse-control keys so raw visitor IP addresses are not stored.
 - `BEEHIIV_API_KEY` and `BEEHIIV_PUBLICATION_ID` enable newsletter synchronization only for checked marketing consent.
-- `BEEHIIV_WEBHOOK_SECRET` verifies signed Beehiiv unsubscribe notifications before Neon is changed. Store it as a Vercel Production Secret, never as public configuration.
+- `BEEHIIV_WEBHOOK_SECRET` verifies signed Beehiiv unsubscribe and confirmation notifications before Neon is changed. Store it as a Vercel Production Secret, never as public configuration.
 
 Provision a dedicated Neon database and create a separate login/role for the runtime connection. With both database URLs available only in the local shell, apply the idempotent least-privilege schema:
 
@@ -36,17 +36,17 @@ After migration, add only `DATABASE_URL`, `WAITLIST_ADMIN_USERNAME`, `WAITLIST_A
 
 The website requests double opt-in and never silently reactivates an unsubscribed address. A checked submission for an address that Neon knows is unsubscribed records a new consent date, requests Beehiiv reactivation, and sends a fresh confirmation email. An unchecked submission never reactivates newsletter delivery.
 
-## Beehiiv unsubscribe webhook
+## Beehiiv consent-state webhook
 
 Beehiiv publication webhooks require the Lite plan or higher. After the new code and database migration are deployed:
 
 1. In Beehiiv, open **Settings → Webhooks** for the Writer's Block by Italus publication.
 2. Create an endpoint for `https://italusbooks.com/api/beehiiv-webhook`.
-3. Select only **Subscription Deleted** (`subscription.deleted`).
+3. Select **Subscription Deleted** (`subscription.deleted`) and **Subscription Confirmed** (`subscription.confirmed`).
 4. Copy the endpoint signing secret. Add it to the Italus Website Vercel project as the Production **Secret** `BEEHIIV_WEBHOOK_SECRET`; do not paste it into source code or chat.
 5. Redeploy after adding the secret, then activate the Beehiiv endpoint.
 
-The endpoint verifies Beehiiv's Svix signature and timestamp against the untouched request body, accepts only bounded `POST` requests, ignores unrelated signed events, and writes no email addresses or request bodies to logs. Neon records `unsubscribed` and `marketing_unsubscribed_at`; a delayed unsubscribe event cannot overwrite a newer explicit consent date.
+The endpoint verifies Beehiiv's Svix signature and timestamp against the untouched request body, accepts only bounded `POST` requests, ignores unrelated signed events, and writes no email addresses or request bodies to logs. Neon records `unsubscribed` and `marketing_unsubscribed_at` after deletion. A later verified confirmation restores `marketing_opt_in`, records the renewed consent time, and returns the Beehiiv status to `synced`. Event-time guards prevent a delayed unsubscribe or confirmation from overwriting a newer consent decision.
 
 ## Administrator access
 

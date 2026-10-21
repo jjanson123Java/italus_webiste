@@ -44,15 +44,27 @@ function validEmail(email) {
   return email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-function deletionData(payload) {
+function eventData(payload) {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return null;
-  if (payload.event_type !== 'subscription.deleted') return { ignored: true };
+  const eventType = payload.event_type;
+  if (eventType !== 'subscription.deleted' && eventType !== 'subscription.confirmed') {
+    return { ignored: true };
+  }
   const email = normalizeEmail(payload.data?.email);
   const timestamp = Number(payload.event_timestamp);
   if (!validEmail(email) || !Number.isInteger(timestamp) || timestamp <= 0) return null;
   const occurredAt = new Date(timestamp * 1000);
   if (Number.isNaN(occurredAt.getTime())) return null;
-  return { ignored: false, email, occurredAt };
+
+  if (eventType === 'subscription.confirmed') {
+    const subscriptionId = String(payload.data?.id ?? '').trim();
+    if (payload.data?.status !== 'active' || !/^sub_[a-z0-9-]{1,100}$/i.test(subscriptionId)) {
+      return null;
+    }
+    return { ignored: false, action: 'confirmed', email, subscriptionId, occurredAt };
+  }
+
+  return { ignored: false, action: 'unsubscribed', email, occurredAt };
 }
 
 function safeEventId(payload) {
@@ -86,12 +98,16 @@ export function createBeehiivWebhookHandler({ store, env, logger = console }) {
       return send(res, 500, { ok: false });
     }
 
-    const deletion = deletionData(payload);
-    if (!deletion) return send(res, 400, { ok: false });
-    if (deletion.ignored) return send(res, 200, { ok: true });
+    const event = eventData(payload);
+    if (!event) return send(res, 400, { ok: false });
+    if (event.ignored) return send(res, 200, { ok: true });
 
     try {
-      await store.markBeehiivUnsubscribed(deletion.email, deletion.occurredAt);
+      if (event.action === 'confirmed') {
+        await store.markBeehiivConfirmed(event.email, event.subscriptionId, event.occurredAt);
+      } else {
+        await store.markBeehiivUnsubscribed(event.email, event.occurredAt);
+      }
       return send(res, 200, { ok: true });
     } catch {
       logger.error('Beehiiv webhook database update failed.', {
