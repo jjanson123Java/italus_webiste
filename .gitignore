@@ -5,4 +5,5 @@ Thumbs.db
 .env.*
 node_modules/
 *.log
+.worktrees/
 
