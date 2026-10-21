@@ -79,3 +79,34 @@ test('critical hero content remains visible and uses the clean studio artwork', 
   assert.doesNotMatch(css, /\[data-reveal\]\s*\{[^}]*opacity:\s*0/s);
   assert.match(css, /\.hero\s*\{[^}]*display:\s*flex/s);
 });
+
+test('deployment configuration documents secure waitlist operations without secret values', async () => {
+  const example = await readFile(join(root, '.env.example'), 'utf8');
+  for (const name of [
+    'DATABASE_URL', 'DATABASE_ADMIN_URL', 'WAITLIST_ADMIN_USERNAME',
+    'WAITLIST_ADMIN_PASSWORD', 'WAITLIST_IP_HASH_SECRET',
+    'BEEHIIV_API_KEY', 'BEEHIIV_PUBLICATION_ID'
+  ]) {
+    assert.match(example, new RegExp(`^${name}=$`, 'm'));
+  }
+
+  const ignore = await readFile(join(root, '.gitignore'), 'utf8');
+  assert.match(ignore, /^\.env\.local$/m);
+  assert.match(ignore, /^!\.env\.example$/m);
+
+  const readme = await readFile(join(root, 'README.md'), 'utf8');
+  for (const phrase of [
+    /restricted runtime role/i, /DATABASE_ADMIN_URL/, /npm run migrate:waitlist/,
+    /Beehiiv/i, /admin-waitlist/, /multi-factor authentication|MFA/i,
+    /rotate.*password/i, /end-to-end verification/i, /Vercel Firewall/i
+  ]) assert.match(readme, phrase);
+});
+
+test('administrator route is absent from public discovery and navigation', async () => {
+  const sitemap = await readFile(join(root, 'sitemap.xml'), 'utf8');
+  assert.doesNotMatch(sitemap, /admin-waitlist/);
+  for (const page of pages) {
+    const html = await readFile(join(root, page), 'utf8');
+    assert.doesNotMatch(html, /href=["'][^"']*admin-waitlist/);
+  }
+});
