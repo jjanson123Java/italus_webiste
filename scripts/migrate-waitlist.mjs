@@ -27,9 +27,10 @@ export function buildMigrationStatements(runtimeRole) {
       source TEXT NOT NULL CHECK (source IN ('home', 'updates')),
       marketing_opt_in BOOLEAN NOT NULL DEFAULT FALSE,
       marketing_consent_at TIMESTAMPTZ,
+      marketing_unsubscribed_at TIMESTAMPTZ,
       beehiiv_subscription_id TEXT,
       beehiiv_sync_status TEXT NOT NULL DEFAULT 'not_requested'
-        CHECK (beehiiv_sync_status IN ('not_requested', 'pending', 'synced', 'failed')),
+        CHECK (beehiiv_sync_status IN ('not_requested', 'pending', 'synced', 'failed', 'unsubscribed')),
       beehiiv_synced_at TIMESTAMPTZ,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -40,6 +41,11 @@ export function buildMigrationStatements(runtimeRole) {
       action TEXT NOT NULL CHECK (action IN ('waitlist', 'admin_auth')),
       attempted_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`,
+    'ALTER TABLE italus_waitlist.waitlist_entries ADD COLUMN IF NOT EXISTS marketing_unsubscribed_at TIMESTAMPTZ',
+    'ALTER TABLE italus_waitlist.waitlist_entries DROP CONSTRAINT IF EXISTS waitlist_entries_beehiiv_sync_status_check',
+    `ALTER TABLE italus_waitlist.waitlist_entries
+      ADD CONSTRAINT waitlist_entries_beehiiv_sync_status_check
+      CHECK (beehiiv_sync_status IN ('not_requested', 'pending', 'synced', 'failed', 'unsubscribed'))`,
     'CREATE INDEX IF NOT EXISTS waitlist_rate_limits_lookup_idx ON italus_waitlist.waitlist_rate_limits (request_key, action, attempted_at DESC)',
     'REVOKE ALL ON SCHEMA italus_waitlist FROM PUBLIC',
     'REVOKE ALL ON ALL TABLES IN SCHEMA italus_waitlist FROM PUBLIC',

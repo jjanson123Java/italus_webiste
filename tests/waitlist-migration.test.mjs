@@ -21,6 +21,13 @@ test('migration is idempotent and creates only the dedicated waitlist schema obj
   assert.doesNotMatch(sql, /DROP\s+(?:TABLE|SCHEMA|ROLE|DATABASE)/i);
 });
 
+test('migration upgrades existing waitlist rows for unsubscribe tracking', () => {
+  const sql = buildMigrationStatements('italus_runtime').join('\n');
+  assert.match(sql, /ADD COLUMN IF NOT EXISTS marketing_unsubscribed_at TIMESTAMPTZ/i);
+  assert.match(sql, /beehiiv_sync_status IN \('not_requested', 'pending', 'synced', 'failed', 'unsubscribed'\)/i);
+  assert.doesNotMatch(sql, /DROP\s+(?:TABLE|SCHEMA|ROLE|DATABASE)/i);
+});
+
 test('migration revokes broad and default privileges before narrow grants', () => {
   const sql = buildMigrationStatements('italus_runtime').join('\n');
   assert.match(sql, /REVOKE ALL ON SCHEMA public FROM "italus_runtime"/i);

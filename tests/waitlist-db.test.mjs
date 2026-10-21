@@ -26,6 +26,7 @@ function createMemorySql() {
           source,
           marketing_opt_in: optIn,
           marketing_consent_at: optIn ? now : null,
+          marketing_unsubscribed_at: null,
           beehiiv_subscription_id: null,
           beehiiv_sync_status: optIn ? 'pending' : 'not_requested',
           beehiiv_synced_at: null,
@@ -38,7 +39,7 @@ function createMemorySql() {
       if (operation === 'upgrade_opt_in') {
         const [email, name, genre, source, now] = params;
         const row = entries.get(email);
-        if (!row || row.marketing_opt_in) return { rows: [] };
+        if (!row || row.marketing_opt_in || row.beehiiv_sync_status === 'unsubscribed') return { rows: [] };
         Object.assign(row, {
           name,
           genre,
@@ -55,6 +56,21 @@ function createMemorySql() {
         const row = entries.get(email);
         if (!row || !row.marketing_opt_in || row.beehiiv_sync_status !== 'failed') return { rows: [] };
         Object.assign(row, { beehiiv_sync_status: 'pending', updated_at: now });
+        return { rows: [clone(row)] };
+      }
+      if (operation === 'resubscribe_unsubscribed') {
+        const [email, name, genre, source, now] = params;
+        const row = entries.get(email);
+        if (!row || row.marketing_opt_in || row.beehiiv_sync_status !== 'unsubscribed') return { rows: [] };
+        Object.assign(row, {
+          name,
+          genre,
+          source,
+          marketing_opt_in: true,
+          marketing_consent_at: now,
+          beehiiv_sync_status: 'pending',
+          updated_at: now
+        });
         return { rows: [clone(row)] };
       }
       if (operation === 'update_entry') {
@@ -78,6 +94,18 @@ function createMemorySql() {
         const [email, now] = params;
         const row = entries.get(email);
         Object.assign(row, { beehiiv_sync_status: 'failed', updated_at: now });
+        return { rows: [clone(row)] };
+      }
+      if (operation === 'mark_unsubscribed') {
+        const [email, occurredAt, now] = params;
+        const row = entries.get(email);
+        if (!row || (row.marketing_consent_at && row.marketing_consent_at > occurredAt)) return { rows: [] };
+        Object.assign(row, {
+          marketing_opt_in: false,
+          marketing_unsubscribed_at: occurredAt,
+          beehiiv_sync_status: 'unsubscribed',
+          updated_at: now
+        });
         return { rows: [clone(row)] };
       }
       if (operation === 'rate_limit') {
@@ -204,6 +232,48 @@ test('later checked repeat retries one failed Beehiiv synchronization exactly on
 
   assert.equal(results.filter((result) => result.shouldSyncBeehiiv).length, 1);
   assert.equal(sql.entries.get(entry().email).beehiiv_sync_status, 'pending');
+});
+
+test('verified unsubscribe becomes inactive and a later checked submission requests one reactivation', async () => {
+  const sql = createMemorySql();
+  let current = new Date('2026-10-21T12:00:00Z');
+  const store = createWaitlistStore({ sql, now: () => current });
+  await store.upsertEntry(entry({ marketingOptIn: true }));
+  await store.markBeehiivSynced(entry().email, 'sub_123');
+
+  const unsubscribedAt = new Date('2026-10-21T13:00:00Z');
+  const unsubscribed = await store.markBeehiivUnsubscribed(entry().email, unsubscribedAt);
+  assert.equal(unsubscribed.marketingOptIn, false);
+  assert.equal(unsubscribed.beehiivSyncStatus, 'unsubscribed');
+  assert.equal(unsubscribed.marketingUnsubscribedAt.toISOString(), unsubscribedAt.toISOString());
+
+  current = new Date('2026-10-21T14:00:00Z');
+  const results = await Promise.all([
+    store.upsertEntry(entry({ marketingOptIn: true })),
+    store.upsertEntry(entry({ marketingOptIn: true }))
+  ]);
+
+  assert.equal(results.filter((result) => result.shouldSyncBeehiiv).length, 1);
+  assert.equal(results.filter((result) => result.reactivateExisting).length, 1);
+  assert.equal(sql.entries.get(entry().email).marketing_consent_at.toISOString(), current.toISOString());
+  assert.equal(sql.entries.get(entry().email).beehiiv_sync_status, 'pending');
+});
+
+test('stale unsubscribe event cannot erase newer explicit consent', async () => {
+  const sql = createMemorySql();
+  const consentAt = new Date('2026-10-21T14:00:00Z');
+  const store = createWaitlistStore({ sql, now: () => consentAt });
+  await store.upsertEntry(entry({ marketingOptIn: true }));
+  await store.markBeehiivSynced(entry().email, 'sub_123');
+
+  const result = await store.markBeehiivUnsubscribed(
+    entry().email,
+    new Date('2026-10-21T13:00:00Z')
+  );
+
+  assert.equal(result, null);
+  assert.equal(sql.entries.get(entry().email).marketing_opt_in, true);
+  assert.equal(sql.entries.get(entry().email).beehiiv_sync_status, 'synced');
 });
 
 test('tracks independent public and admin rate-limit buckets', async () => {
