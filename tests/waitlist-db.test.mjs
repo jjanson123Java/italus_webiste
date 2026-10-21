@@ -50,6 +50,13 @@ function createMemorySql() {
         });
         return { rows: [clone(row)] };
       }
+      if (operation === 'retry_failed_sync') {
+        const [email, now] = params;
+        const row = entries.get(email);
+        if (!row || !row.marketing_opt_in || row.beehiiv_sync_status !== 'failed') return { rows: [] };
+        Object.assign(row, { beehiiv_sync_status: 'pending', updated_at: now });
+        return { rows: [clone(row)] };
+      }
       if (operation === 'update_entry') {
         const [email, name, genre, source, now] = params;
         const row = entries.get(email);
@@ -180,6 +187,23 @@ test('later checked repeat upgrades consent exactly once', async () => {
   assert.equal([first, second].filter((result) => result.shouldSyncBeehiiv).length, 1);
   assert.equal(first.entry.createdAt.toISOString(), '2026-10-21T12:00:00.000Z');
   assert.equal(sql.entries.get(entry().email).updated_at.toISOString(), '2026-10-21T13:00:00.000Z');
+});
+
+test('later checked repeat retries one failed Beehiiv synchronization exactly once', async () => {
+  const sql = createMemorySql();
+  let current = new Date('2026-10-21T12:00:00Z');
+  const store = createWaitlistStore({ sql, now: () => current });
+  await store.upsertEntry(entry({ marketingOptIn: true }));
+  await store.markBeehiivFailed(entry().email);
+  current = new Date('2026-10-21T13:00:00Z');
+
+  const results = await Promise.all([
+    store.upsertEntry(entry({ marketingOptIn: true })),
+    store.upsertEntry(entry({ marketingOptIn: true }))
+  ]);
+
+  assert.equal(results.filter((result) => result.shouldSyncBeehiiv).length, 1);
+  assert.equal(sql.entries.get(entry().email).beehiiv_sync_status, 'pending');
 });
 
 test('tracks independent public and admin rate-limit buckets', async () => {
