@@ -48,6 +48,7 @@ export function buildMigrationStatements(runtimeRole) {
     'ALTER DEFAULT PRIVILEGES IN SCHEMA italus_waitlist REVOKE ALL ON SEQUENCES FROM PUBLIC',
     'REVOKE CREATE ON SCHEMA public FROM PUBLIC',
     `REVOKE ALL ON SCHEMA public FROM ${role}`,
+    "DO $migration$ BEGIN EXECUTE format('REVOKE TEMP ON DATABASE %I FROM PUBLIC', current_database()); END $migration$",
     `DO $migration$ BEGIN EXECUTE format('REVOKE CREATE, TEMP ON DATABASE %I FROM ${role}', current_database()); END $migration$`,
     `REVOKE ALL ON SCHEMA italus_waitlist FROM ${role}`,
     `REVOKE ALL ON ALL TABLES IN SCHEMA italus_waitlist FROM ${role}`,
