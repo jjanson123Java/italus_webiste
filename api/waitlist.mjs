@@ -39,6 +39,11 @@ function clientIp(req) {
     .trim();
 }
 
+function safeErrorCode(error) {
+  const code = String(error?.code ?? '');
+  return /^[a-z0-9]{5}$/i.test(code) ? code : 'unknown';
+}
+
 export function createWaitlistHandler({ store, beehiiv, env, logger = console }) {
   return async function waitlistHandler(req, res) {
     publicHeaders(res);
@@ -68,14 +73,17 @@ export function createWaitlistHandler({ store, beehiiv, env, logger = console })
     }
     if (validation.data.website) return send(res, 200, SUCCESS);
 
+    let phase = 'rate_limit';
     try {
       const requestKey = createRequestKey(clientIp(req), env.WAITLIST_IP_HASH_SECRET);
       if (!(await store.checkRateLimit(requestKey, 'waitlist'))) {
         return send(res, 429, { ok: false, message: 'Please wait before trying again.' });
       }
 
+      phase = 'upsert_entry';
       const result = await store.upsertEntry(validation.data);
       if (result.shouldSyncBeehiiv) {
+        phase = 'beehiiv_sync';
         try {
           const subscription = await beehiiv.subscribe({
             email: validation.data.email,
@@ -89,8 +97,8 @@ export function createWaitlistHandler({ store, beehiiv, env, logger = console })
         }
       }
       return send(res, 200, SUCCESS);
-    } catch {
-      logger.error('Waitlist submission failed.');
+    } catch (error) {
+      logger.error('Waitlist submission failed.', { phase, code: safeErrorCode(error) });
       return send(res, 500, { ok: false, message: 'Unable to join right now. Please try again.' });
     }
   };

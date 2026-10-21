@@ -52,7 +52,7 @@ function dependencies(overrides = {}) {
     async subscribe(data) { calls.subscribe.push(data); return { subscriptionId: 'sub_123' }; },
     ...overrides.beehiiv
   };
-  const logger = { error(value) { calls.logs.push(String(value)); } };
+  const logger = { error(...values) { calls.logs.push(values); } };
   return {
     calls,
     handler: createWaitlistHandler({
@@ -157,5 +157,21 @@ test('records Beehiiv failure without failing registration or leaking provider e
   assert.equal(response.statusCode, 200);
   assert.deepEqual(calls.failed, ['ada@example.com']);
   assert.equal(calls.logs.length, 1);
-  assert.doesNotMatch(calls.logs[0], /provider secret detail|ada@example.com/);
+  assert.doesNotMatch(JSON.stringify(calls.logs[0]), /provider secret detail|ada@example.com/);
+});
+
+test('logs only the failing phase and PostgreSQL code for a submission error', async () => {
+  const databaseError = Object.assign(new Error('secret connection detail'), { code: '42501' });
+  const { handler, calls } = dependencies({
+    store: { async upsertEntry() { throw databaseError; } }
+  });
+
+  const response = await invoke(handler);
+
+  assert.equal(response.statusCode, 500);
+  assert.deepEqual(calls.logs, [[
+    'Waitlist submission failed.',
+    { phase: 'upsert_entry', code: '42501' }
+  ]]);
+  assert.doesNotMatch(JSON.stringify(calls.logs), /secret connection detail|ada@example.com/);
 });
