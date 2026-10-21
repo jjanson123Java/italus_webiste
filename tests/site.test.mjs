@@ -30,6 +30,13 @@ for (const [page, source] of [['index.html', 'home'], ['updates.html', 'updates'
     const html = await readFile(join(root, page), 'utf8');
     assert.match(html, /data-waitlist-form/);
     assert.match(html, new RegExp(`name="source" value="${source}"`));
+    assert.match(html, /<select name="genre">/);
+    assert.match(html, /<option>Fiction \/ general<\/option>/);
+    assert.match(html, /<option>Fantasy<\/option>/);
+    assert.match(html, /<option>Mystery \/ thriller<\/option>/);
+    assert.match(html, /<option>Science fiction<\/option>/);
+    assert.match(html, /<option>Romance<\/option>/);
+    assert.match(html, /<option>Other<\/option>/);
     assert.match(html, /name="website"[^>]+tabindex="-1"/);
     assert.match(html, /type="checkbox" name="marketingOptIn"/);
     assert.doesNotMatch(html, /type="checkbox" name="marketingOptIn"[^>]+(?:required|checked)/);
