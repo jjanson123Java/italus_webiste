@@ -118,6 +118,40 @@ test('stores one row for repeated and concurrent submissions', async () => {
   assert.equal((await store.countEntries()), 1);
 });
 
+test('explicitly types consent parameters used inside the PostgreSQL CASE expression', async () => {
+  const current = new Date('2026-10-21T12:00:00Z');
+  const sql = {
+    async query(text, params) {
+      if (!text.includes('/* insert_entry */')) throw new Error('Unexpected query.');
+      if (!/CASE WHEN \$5::boolean THEN \$6::timestamptz ELSE NULL END/.test(text)) {
+        const error = new Error('PostgreSQL could not resolve the CASE result as TIMESTAMPTZ.');
+        error.code = '42804';
+        throw error;
+      }
+      return { rows: [{
+        id: 1,
+        email: params[0],
+        name: params[1],
+        genre: params[2],
+        source: params[3],
+        marketing_opt_in: params[4],
+        marketing_consent_at: current,
+        beehiiv_subscription_id: null,
+        beehiiv_sync_status: 'pending',
+        beehiiv_synced_at: null,
+        created_at: current,
+        updated_at: current
+      }] };
+    }
+  };
+  const store = createWaitlistStore({ sql, now: () => current });
+
+  const result = await store.upsertEntry(entry({ marketingOptIn: true }));
+
+  assert.equal(result.entry.marketingConsentAt.toISOString(), current.toISOString());
+  assert.equal(result.shouldSyncBeehiiv, true);
+});
+
 test('unchecked repeat preserves prior consent and does not request another sync', async () => {
   const sql = createMemorySql();
   const store = createWaitlistStore({ sql, now: () => new Date('2026-10-21T12:00:00Z') });
