@@ -24,6 +24,8 @@ test('migration is idempotent and creates only the dedicated waitlist schema obj
 test('migration revokes broad and default privileges before narrow grants', () => {
   const sql = buildMigrationStatements('italus_runtime').join('\n');
   assert.match(sql, /REVOKE ALL ON SCHEMA public FROM "italus_runtime"/i);
+  assert.match(sql, /REVOKE CREATE ON SCHEMA public FROM PUBLIC/i);
+  assert.match(sql, /REVOKE CREATE, TEMP ON DATABASE/i);
   assert.match(sql, /REVOKE ALL ON SCHEMA italus_waitlist FROM PUBLIC/i);
   assert.match(sql, /REVOKE ALL ON ALL TABLES IN SCHEMA italus_waitlist FROM PUBLIC/i);
   assert.match(sql, /ALTER DEFAULT PRIVILEGES IN SCHEMA italus_waitlist REVOKE ALL ON TABLES FROM PUBLIC/i);

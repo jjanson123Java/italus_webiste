@@ -100,6 +100,11 @@ export function createAdminWaitlistHandler({ store, env = process.env } = {}) {
 }
 
 export default async function handler(req, res) {
-  const adminHandler = createAdminWaitlistHandler({ store: createWaitlistStore(), env: process.env });
-  return adminHandler(req, res);
+  try {
+    const adminHandler = createAdminWaitlistHandler({ store: createWaitlistStore(), env: process.env });
+    return await adminHandler(req, res);
+  } catch {
+    setSecurityHeaders(res);
+    return send(res, 503, 'Administrator access is unavailable.');
+  }
 }
