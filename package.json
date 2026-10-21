@@ -9,6 +9,7 @@
     "preview": "python -m http.server 8766"
   },
   "dependencies": {
-    "@neondatabase/serverless": "^1.2.0"
+    "@neondatabase/serverless": "^1.2.0",
+    "svix": "^1.99.1"
   }
 }
