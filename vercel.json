@@ -1,6 +1,9 @@
 {
   "cleanUrls": false,
   "trailingSlash": false,
+  "rewrites": [
+    { "source": "/admin-waitlist", "destination": "/api/admin-waitlist" }
+  ],
   "headers": [
     {
       "source": "/(.*)",
