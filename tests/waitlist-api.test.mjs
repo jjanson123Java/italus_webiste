@@ -146,7 +146,24 @@ test('syncs a newly recorded opt-in exactly once', async () => {
   const response = await invoke(handler, request({ body: { ...validBody, marketingOptIn: true } }));
   assert.equal(response.statusCode, 200);
   assert.equal(calls.subscribe.length, 1);
+  assert.equal(calls.subscribe[0].reactivateExisting, false);
   assert.deepEqual(calls.synced, [['ada@example.com', 'sub_123']]);
+});
+
+test('forwards an explicit resubscription transition to Beehiiv', async () => {
+  const { handler, calls } = dependencies({
+    store: {
+      async upsertEntry(data) {
+        return { entry: data, shouldSyncBeehiiv: true, reactivateExisting: true };
+      }
+    }
+  });
+
+  const response = await invoke(handler, request({ body: { ...validBody, marketingOptIn: true } }));
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(calls.subscribe.length, 1);
+  assert.equal(calls.subscribe[0].reactivateExisting, true);
 });
 
 test('records Beehiiv failure without failing registration or leaking provider errors', async () => {

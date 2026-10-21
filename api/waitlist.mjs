@@ -88,7 +88,8 @@ export function createWaitlistHandler({ store, beehiiv, env, logger = console })
           const subscription = await beehiiv.subscribe({
             email: validation.data.email,
             name: validation.data.name,
-            source: validation.data.source
+            source: validation.data.source,
+            reactivateExisting: result.reactivateExisting === true
           });
           await store.markBeehiivSynced(validation.data.email, subscription.subscriptionId);
         } catch {

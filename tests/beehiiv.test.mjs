@@ -28,6 +28,30 @@ test('subscribes with consent-safe Beehiiv settings and source attribution', asy
   assert.deepEqual(body.custom_fields, [{ name: 'name', value: 'Ada Author' }]);
 });
 
+test('reactivates only when explicitly requested while retaining fresh double opt-in', async () => {
+  let request;
+  const client = createBeehiivClient({
+    apiKey: 'secret-key',
+    publicationId: 'pub_123',
+    fetchImpl: async (_url, options) => {
+      request = options;
+      return new Response(JSON.stringify({ data: { id: 'sub_123' } }), { status: 201 });
+    }
+  });
+
+  await client.subscribe({
+    email: 'ada@example.com',
+    name: 'Ada Author',
+    source: 'updates',
+    reactivateExisting: true
+  });
+  const body = JSON.parse(request.body);
+
+  assert.equal(body.reactivate_existing, true);
+  assert.equal(body.double_opt_override, 'on');
+  assert.equal(body.send_welcome_email, true);
+});
+
 test('fails closed when Beehiiv configuration is missing', () => {
   assert.throws(() => createBeehiivClient({ apiKey: '', publicationId: 'pub_123' }), /not configured/i);
   assert.throws(() => createBeehiivClient({ apiKey: 'key', publicationId: '' }), /not configured/i);
