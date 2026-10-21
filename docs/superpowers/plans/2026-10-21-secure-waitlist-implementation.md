@@ -17,6 +17,7 @@
 - Waitlist registration must succeed whether the optional marketing checkbox is checked or unchecked.
 - Never send unchecked addresses to Beehiiv; never silently reactivate an unsubscribed Beehiiv subscriber.
 - Keep database credentials, Beehiiv credentials, the administrator password, and the IP-hash secret server-only.
+- Use separate Neon owner/migration and restricted runtime credentials; deployed functions must receive only the restricted role.
 - Return the same public success response for new and existing addresses.
 - Admin HTML and CSV must require authentication, disable caching and indexing, and escape untrusted values.
 - Use test-driven development: every production behavior begins with a test that is observed failing for the expected reason.
@@ -73,18 +74,18 @@ Assert deterministic non-raw-IP request keys; valid credentials pass; missing, m
 
 **Interfaces:**
 - Consumes: normalized payloads from Task 1.
-- Produces: `createWaitlistStore({ sql, now })` with `ensureSchema()`, `checkRateLimit(requestKey)`, `upsertEntry(data)`, `markBeehiivSynced(email, subscriptionId)`, `markBeehiivFailed(email)`, `listEntries()`, and `countEntries()`.
+- Produces: `createWaitlistStore({ sql, now })` with `checkRateLimit(requestKey, action)`, `upsertEntry(data)`, `markBeehiivSynced(email, subscriptionId)`, `markBeehiivFailed(email)`, `listEntries()`, and `countEntries()`.
 - `upsertEntry(data)` returns `{ entry, shouldSyncBeehiiv }`; `shouldSyncBeehiiv` is true only for a newly recorded explicit opt-in that is not already synced.
 
 - [ ] **Step 1: Write failing store tests using an in-memory SQL adapter**
 
-Cover idempotent schema initialization, one normalized email under repeated and concurrent calls, unchecked initial registration, unchecked repeat preserving prior opt-in, later checked repeat upgrading consent once, and first/last timestamps.
+Cover one normalized email under repeated and concurrent calls, unchecked initial registration, unchecked repeat preserving prior opt-in, later checked repeat upgrading consent once, and first/last timestamps.
 
 - [ ] **Step 2: Run `node --test tests/waitlist-db.test.mjs` and verify failure because the store does not exist**
 
 - [ ] **Step 3: Install `@neondatabase/serverless` and implement the store with parameterized SQL and `ON CONFLICT (email)` semantics**
 
-The production adapter reads `DATABASE_URL` lazily. Schema constraints limit `source` and `beehiiv_sync_status`; rate-limit cleanup and a five-attempt/15-minute rolling decision are performed server-side.
+The production adapter reads the restricted `DATABASE_URL` lazily. Schema constraints limit `source` and `beehiiv_sync_status`; public and administrator rate-limit cleanup and five-attempt/15-minute rolling decisions are performed server-side.
 
 - [ ] **Step 4: Run the focused test and verify all persistence and concurrency cases pass**
 
@@ -186,11 +187,11 @@ Assert a source field, hidden honeypot, optional unchecked `marketingOptIn` chec
 - Consumes: Task 1 authentication/escaping and Task 2 list/count operations.
 - Produces: default Vercel handler and exported `createAdminWaitlistHandler({ store, env })`; `/admin-waitlist` rewrite; `?format=csv` export.
 
-- [ ] **Step 1: Write failing tests for missing, malformed, wrong, and correct Basic Authentication and confirm unauthorized bodies contain no waitlist data**
+- [ ] **Step 1: Write failing tests for missing, malformed, wrong, and correct Basic Authentication, five-failure/15-minute administrator throttling, and confirm unauthorized bodies contain no waitlist data or credentials**
 
 - [ ] **Step 2: Run `node --test tests/admin-waitlist.test.mjs` and verify failure because the handler does not exist**
 
-- [ ] **Step 3: Implement fail-closed Basic Authentication with `WWW-Authenticate`, `Cache-Control: private, no-store`, CSP, frame denial, and noindex headers**
+- [ ] **Step 3: Implement fail-closed Basic Authentication with a separate `admin_auth` rate-limit action, `WWW-Authenticate`, `Cache-Control: private, no-store`, CSP, frame denial, and noindex headers**
 
 - [ ] **Step 4: Run the focused test and verify authentication cases pass**
 
@@ -206,32 +207,38 @@ Assert a source field, hidden honeypot, optional unchecked `marketingOptIn` chec
 
 **Files:**
 - Create: `.env.example`
+- Create: `scripts/migrate-waitlist.mjs`
+- Create: `tests/waitlist-migration.test.mjs`
 - Modify: `.gitignore`
 - Modify: `README.md`
 - Modify: `docs/superpowers/specs/2026-10-20-secure-waitlist-design.md`
 
 **Interfaces:**
-- Consumes: all prior tasks and Vercel Production variables `DATABASE_URL`, `WAITLIST_ADMIN_PASSWORD`, `WAITLIST_IP_HASH_SECRET`, `BEEHIIV_API_KEY`, and `BEEHIIV_PUBLICATION_ID`.
+- Consumes: all prior tasks and Vercel Production variables `DATABASE_URL`, `WAITLIST_ADMIN_PASSWORD`, `WAITLIST_IP_HASH_SECRET`, `BEEHIIV_API_KEY`, and `BEEHIIV_PUBLICATION_ID`; migration-only `DATABASE_ADMIN_URL` remains outside deployed functions.
 - Produces: deployable GitHub main branch and verified production flow.
 
 - [ ] **Step 1: Write failing configuration/documentation assertions in `tests/site.test.mjs`**
 
-Assert `.env.example` contains names without values, local secret files are ignored, README documents Neon, Beehiiv, admin access, password rotation, and deployment verification, and public sitemap/navigation omit the admin route.
+Assert `.env.example` contains names without values, local secret files are ignored, README documents Neon role separation, migration, Beehiiv, admin access, MFA, password rotation, and deployment verification, and public sitemap/navigation omit the admin route.
 
 - [ ] **Step 2: Run the focused test and verify failure for the missing configuration files and instructions**
 
-- [ ] **Step 3: Add `.env.example`, ignore rules, README instructions, and mark the design status implemented only after production verification**
+- [ ] **Step 3: Write failing migration tests proving idempotent schema creation, grants limited to the two waitlist tables and sequences, default privileges are revoked, and the runtime role lacks schema/role creation and unrelated-table access**
 
-- [ ] **Step 4: Run `npm test` and verify the complete suite passes with no warnings**
+- [ ] **Step 4: Implement `scripts/migrate-waitlist.mjs`, add `.env.example`, ignore rules, README instructions, and mark the design status implemented only after production verification**
 
-- [ ] **Step 5: Provision or connect Neon to the existing `like-tac/italus-website` project and add generated production secrets without displaying their values**
+- [ ] **Step 5: Run `npm test` and verify the complete suite passes with no warnings**
 
-- [ ] **Step 6: Commit with message `Document secure waitlist deployment` and push the reviewed commits to GitHub `main`**
+- [ ] **Step 6: Provision or connect Neon, run the migration with `DATABASE_ADMIN_URL`, and add only the restricted runtime `DATABASE_URL` to the existing `like-tac/italus-website` production environment without displaying values**
 
-- [ ] **Step 7: Verify the Vercel production deployment is `READY` and inspect logs for secret-free runtime errors**
+- [ ] **Step 7: Commit with message `Document secure waitlist deployment` and push the reviewed commits to GitHub `main`**
 
-- [ ] **Step 8: Verify production end-to-end**
+- [ ] **Step 8: Stage Vercel Firewall log rules for `POST /api/waitlist` and `/admin-waitlist`, review the diff, and leave production blocking or throttling unpublished until traffic confirms the match is safe**
+
+- [ ] **Step 9: Verify the Vercel production deployment is `READY` and inspect logs for secret-free runtime errors**
+
+- [ ] **Step 10: Verify production end-to-end**
 
 Confirm unauthorized admin access returns `401`; unchecked and checked test submissions both succeed; duplicate checked submission leaves one Neon row; unchecked entry is absent from Beehiiv; checked entry is pending or active in Beehiiv; admin HTML and CSV show the correct consent/sync state; existing public pages and `italusbooks.com` remain healthy.
 
-- [ ] **Step 9: Remove the clearly labeled production test entries through a safe targeted operation, rotate the previously shared administrator password, and record final verification evidence**
+- [ ] **Step 11: Remove the clearly labeled production test entries through a safe targeted operation, rotate the previously shared administrator password, confirm MFA on administrative accounts, and record final verification evidence**

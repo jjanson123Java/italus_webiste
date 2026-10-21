@@ -56,9 +56,9 @@ No raw IP address, browser fingerprint, password, or unnecessary profile data is
 | `request_key` | `text` | HMAC-derived identifier; never a raw IP address |
 | `attempted_at` | `timestamptz` | Time of an attempted submission |
 
-The API permits at most five attempts per derived request key in a rolling 15-minute window. Old rate-limit rows are periodically deleted. The HMAC key is a Vercel secret, so database contents cannot be used to reconstruct source addresses.
+The public API permits at most five attempts per derived request key in a rolling 15-minute window. The administrator endpoint separately permits at most five failed authentication attempts per derived request key in a rolling 15-minute window. Old rate-limit rows are periodically deleted. The HMAC key is a Vercel secret, so database contents cannot be used to reconstruct source addresses.
 
-The schema is created idempotently with `CREATE TABLE IF NOT EXISTS` from a shared server-only database module. This keeps first deployment and disaster recovery deterministic without exposing database credentials to the browser.
+The schema is created idempotently by a deployment migration script using a separate administrative connection. The deployed functions receive only a restricted application-role connection that can read and write the waitlist tables but cannot create or drop schemas, databases, roles, or unrelated tables. This keeps first deployment and disaster recovery deterministic while limiting the damage possible if a runtime credential is ever exposed.
 
 ## Public Form Behavior
 
@@ -116,13 +116,14 @@ HTML and CSV values will be escaped to prevent injection. Admin responses will u
 
 The following values will exist only as Vercel environment variables:
 
-- `DATABASE_URL` — provisioned by the Neon Marketplace integration.
+- `DATABASE_URL` — restricted runtime-role connection used by deployed functions.
+- `DATABASE_ADMIN_URL` — owner-level connection used only by the migration command and never attached to deployed functions.
 - `WAITLIST_ADMIN_PASSWORD` — the approved administrator password, configured as a sensitive variable.
 - `WAITLIST_IP_HASH_SECRET` — a generated high-entropy HMAC secret, configured as a sensitive variable.
 - `BEEHIIV_API_KEY` — a beehiiv API key with subscription-write access, configured as a sensitive variable.
 - `BEEHIIV_PUBLICATION_ID` — the Italus beehiiv publication identifier.
 
-No secret value will be committed, printed, embedded in client JavaScript, or written to documentation. `.env.example` will contain names only. Production and local-development values will be separated. Preview deployments will not receive production database or beehiiv access unless explicitly enabled later.
+No secret value will be committed, printed, embedded in client JavaScript, or written to documentation. `.env.example` will contain names only. Production and local-development values will be separated. Preview deployments will not receive production database or beehiiv access unless explicitly enabled later. Vercel, Neon, GitHub, and beehiiv administrator accounts must use multifactor authentication where supported, and access must be limited to necessary project members.
 
 Because the initial administrator password was supplied through chat, it should be rotated after production verification.
 
@@ -138,7 +139,8 @@ Expected implementation changes:
 - `js/site.mjs`: asynchronous submission and accessible status behavior.
 - `api/waitlist.mjs`: public submission endpoint.
 - `api/admin-waitlist.mjs`: authenticated HTML and CSV administration endpoint.
-- `lib/waitlist-db.mjs`: lazy Neon connection, schema creation, one-email uniqueness, rate limiting, and data access.
+- `lib/waitlist-db.mjs`: lazy restricted Neon connection, one-email uniqueness, rate limiting, and data access.
+- `scripts/migrate-waitlist.mjs`: idempotent schema and least-privilege role setup using the separate administrative connection.
 - `lib/beehiiv.mjs`: server-only beehiiv subscriber synchronization and response validation.
 - `lib/waitlist-security.mjs`: validation, normalization, HMAC request keys, authentication, and escaping helpers.
 - `vercel.json`: `/admin-waitlist` rewrite plus function-specific security headers where needed.
@@ -159,6 +161,8 @@ Automated tests will cover:
 - A later explicit opt-in upgrading the existing row and calling beehiiv once.
 - beehiiv success, timeout, failure-state recording, and no-reactivation behavior.
 - Rolling rate-limit decisions.
+- Separate administrator-authentication rate-limit decisions.
+- Runtime-role permission tests proving schema, role, and unrelated-table operations are unavailable.
 - Successful and failed Basic Authentication.
 - Timing-safe comparison behavior for differing input lengths.
 - HTML escaping and CSV formula-injection protection.
@@ -180,7 +184,7 @@ The production test entry will be clearly labeled and removed after verification
 
 ## Deployment
 
-Provision Neon through the Vercel Marketplace for the existing `like-tac/italus-website` project. Create an Italus publication in beehiiv, complete beehiiv account verification, generate a dedicated API key, and copy the API V2 publication ID. Add sensitive secrets directly to Vercel, install dependencies locally, run the full test suite, commit and push to GitHub `main`, and allow the established Git integration to deploy production. Inspect build/runtime logs and verify the complete browser-to-database-to-admin-and-beehiiv flow before reporting completion.
+Provision Neon through the Vercel Marketplace for the existing `like-tac/italus-website` project. Use the owner connection only to run the migration, create the restricted runtime role, and generate its connection string; attach only that restricted connection as production `DATABASE_URL`. Create an Italus publication in beehiiv, complete beehiiv account verification, generate a dedicated API key, and copy the API V2 publication ID. Add sensitive secrets directly to Vercel, install dependencies locally, run the full test suite, commit and push to GitHub `main`, and allow the established Git integration to deploy production. Stage Vercel Firewall rules in log mode for the waitlist and administrator endpoints, review matching traffic, and promote only verified rules. Inspect build/runtime logs and verify the complete browser-to-database-to-admin-and-beehiiv flow before reporting completion.
 
 ## Success Criteria
 
@@ -192,5 +196,7 @@ Provision Neon through the Vercel Marketplace for the existing `like-tac/italus-
 - Explicitly opted-in addresses synchronize to beehiiv, retain auditable consent time, and can unsubscribe through beehiiv.
 - Secrets and database credentials never reach GitHub or browser code.
 - Unauthorized users cannot retrieve waitlist entries or CSV exports.
+- Deployed functions cannot create or drop schemas, databases, roles, or unrelated tables.
+- Repeated administrator-login failures are throttled and logged without credentials.
 - The administrator can securely view and export the list.
 - Existing site content and design remain unchanged except for the necessary waitlist controls and messaging.
