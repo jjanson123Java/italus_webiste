@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { isValidEmail, getFormConfirmation, getCopyrightYear } from '../js/site.mjs';
@@ -96,6 +96,17 @@ test('critical hero content remains visible and uses the clean studio artwork', 
   assert.match(css, /url\('assets\/themes\/original\/studio-bg\.png'\)/);
   assert.doesNotMatch(css, /\[data-reveal\]\s*\{[^}]*opacity:\s*0/s);
   assert.match(css, /\.hero\s*\{[^}]*display:\s*flex/s);
+});
+
+test('science-fiction cards use the approved Italus studio artwork everywhere', async () => {
+  const approvedImage = 'assets/themes/sci-fi/studio-bg-separated.png';
+  await access(join(root, approvedImage));
+
+  for (const page of ['index.html', 'themes.html']) {
+    const html = await readFile(join(root, page), 'utf8');
+    assert.match(html, new RegExp(approvedImage.replaceAll('/', '\\/').replace('.', '\\.')));
+    assert.doesNotMatch(html, /assets\/themes\/sci-fi\/thumbnail\.jpg/);
+  }
 });
 
 test('deployment configuration documents secure waitlist operations without secret values', async () => {
