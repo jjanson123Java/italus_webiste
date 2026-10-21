@@ -108,6 +108,15 @@ textarea { min-height: 150px; resize: vertical; }
 .notice { padding: 1rem 1.2rem; border: 1px solid var(--gold); background: rgba(214,168,95,.08); color: #eadfc8; }
 .studio-preview { min-height: 70vh; display: grid; place-items: center; text-align: center; }
 .studio-preview .card { max-width: 780px; padding: clamp(2rem, 6vw, 5rem); }
+.confirmation-page { min-height: calc(100vh - 220px); display: grid; place-items: center; padding: clamp(3rem, 8vw, 7rem) 0; background: linear-gradient(rgba(9,17,15,.76), rgba(9,17,15,.94)), url('assets/themes/original/studio-bg.png') center/cover fixed; }
+.confirmation-card { width: min(calc(100% - 2rem), 760px); padding: clamp(2rem, 6vw, 4.5rem); text-align: center; border-color: var(--gold); }
+.confirmation-card h1 { font-size: clamp(2.8rem, 7vw, 5.3rem); margin-top: .65rem; }
+.confirmation-card .lede { margin-inline: auto; color: var(--gold-bright); }
+.confirmation-card > p:not(.eyebrow):not(.lede) { max-width: 38rem; margin-inline: auto; }
+.confirmation-card .button-row { justify-content: center; }
+.confirmation-mark { display: grid; place-items: center; width: 72px; height: 72px; margin: 0 auto 1.4rem; border: 1px solid var(--gold); border-radius: 50%; background: rgba(214,168,95,.12); color: var(--gold-bright); font: 2.4rem/1 var(--serif); box-shadow: 0 0 0 8px rgba(214,168,95,.05); }
+.confirmation-footer { padding-top: 1.5rem; padding-bottom: 1.5rem; }
+.confirmation-footer .fine-print { margin: 0; padding: 0; border: 0; text-align: center; }
 .site-footer { padding: 3rem 0; border-top: 1px solid var(--line); background: #070d0b; }
 .footer-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 2rem; }
 .footer-links { list-style: none; margin: 0; padding: 0; }

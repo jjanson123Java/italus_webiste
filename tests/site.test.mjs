@@ -71,6 +71,17 @@ test('studio page labels the application as a future preview', async () => {
   assert.match(html, /not yet connected/i);
 });
 
+test('subscription confirmation page completes the newsletter journey without another form', async () => {
+  const html = await readFile(join(root, 'subscription-confirmed.html'), 'utf8');
+  assert.match(html, /<link rel="canonical" href="https:\/\/italusbooks\.com\/subscription-confirmed\.html">/);
+  assert.match(html, /<meta name="robots" content="noindex,follow">/);
+  assert.match(html, /Subscription confirmed/i);
+  assert.match(html, /subscribed to Writer(?:&rsquo;|&#8217;|’)s Block by Italus Studio/i);
+  assert.match(html, /href="index\.html"[^>]*>Return to Italus Studio</i);
+  assert.match(html, /href="updates\.html"[^>]*>Explore Italus updates</i);
+  assert.doesNotMatch(html, /<form\b/i);
+});
+
 test('sitemap lists every public page on italusbooks.com', async () => {
   const xml = await readFile(join(root, 'sitemap.xml'), 'utf8');
   for (const page of pages) {
