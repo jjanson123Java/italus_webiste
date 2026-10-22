@@ -16,7 +16,7 @@ You are responsible for accurate account information, safeguarding your email ac
 
 The application is not yet open for registration. The public Sign Up control remains disabled until Italus intentionally enables registration and completes operational and legal launch review.
 
-Initial application access is planned to be free. Italus may later offer Free, Mid, and Pro plans, but there is no automatic conversion to a paid plan. A future paid plan will require advance disclosure of then-current price, billing interval, included features and limits, renewal and cancellation terms, and an explicit plan selection and payment authorization. Continued use of a free account alone is not consent to future charges.
+Initial application access is planned to be free. Italus may later offer **Free Trial, Author, and Studio plans**, but there is no automatic conversion to a paid plan. A future paid plan will require advance disclosure of then-current price, billing interval, included features and limits, renewal and cancellation terms, and an explicit plan selection and payment authorization. Continued use of a Free Trial or other free access alone is not consent to future charges.
 
 ## 3. Author content and acceptable use
 

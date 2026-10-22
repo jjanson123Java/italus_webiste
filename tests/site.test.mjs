@@ -101,6 +101,7 @@ test('the reviewed registration disclosure separates access, community, marketin
   assert.match(markdown, /Registration does not enroll you in marketing/i);
   assert.match(markdown, /Registration does not grant community access/i);
   assert.match(markdown, /no automatic conversion to a paid plan/i);
+  assert.match(markdown, /Free Trial, Author, and Studio plans/);
   assert.match(markdown, /tokens are not the same as words/i);
   assert.match(markdown, /OpenAI|Anthropic/);
 });
