@@ -84,6 +84,27 @@ test('community is ordered between Pricing and Social in every primary navigatio
   }
 });
 
+test('every primary navigation contains a non-operable launch registration placeholder', async () => {
+  const script = await readFile(join(root, 'js', 'site.mjs'), 'utf8');
+  assert.match(script, /data-registration-placeholder/);
+  assert.match(script, /Sign Up — Coming at launch/);
+  assert.match(script, /button\.disabled = true/);
+  for (const page of pages) {
+    const html = await readFile(join(root, page), 'utf8');
+    assert.match(html, /<script type="module" src="js\/site\.mjs"><\/script>/);
+  }
+});
+
+test('the reviewed registration disclosure separates access, community, marketing, and future payment consent', async () => {
+  const markdown = await readFile(join(root, 'docs', 'italus-registration-and-legal-disclosures.md'), 'utf8');
+  assert.match(markdown, /Version:\*\* 1\.0/);
+  assert.match(markdown, /Registration does not enroll you in marketing/i);
+  assert.match(markdown, /Registration does not grant community access/i);
+  assert.match(markdown, /no automatic conversion to a paid plan/i);
+  assert.match(markdown, /tokens are not the same as words/i);
+  assert.match(markdown, /OpenAI|Anthropic/);
+});
+
 test('every footer provides a Community entry point', async () => {
   for (const page of pages) {
     const html = await readFile(join(root, page), 'utf8');

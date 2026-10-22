@@ -98,6 +98,21 @@ function initNavigation() {
   });
 }
 
+function initRegistrationPlaceholder() {
+  const menu = document.querySelector('[data-menu]');
+  if (!menu || menu.querySelector('[data-registration-placeholder]')) return;
+  const item = document.createElement('li');
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'button registration-placeholder';
+  button.dataset.registrationPlaceholder = '';
+  button.disabled = true;
+  button.setAttribute('aria-disabled', 'true');
+  button.textContent = 'Sign Up — Coming at launch';
+  item.append(button);
+  menu.append(item);
+}
+
 function initForms() {
   document.querySelectorAll('[data-preview-form]').forEach((form) => {
     form.addEventListener('submit', (event) => {
@@ -151,7 +166,8 @@ function initReveals() {
 }
 
 if (typeof document !== 'undefined') {
-  initNavigation();
+initNavigation();
+initRegistrationPlaceholder();
   initForms();
   initWaitlistForms();
   initYear();

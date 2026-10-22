@@ -4,6 +4,9 @@
   "rewrites": [
     { "source": "/admin-waitlist", "destination": "/api/admin-waitlist" }
   ],
+  "crons": [
+    { "path": "/api/community-cleanup", "schedule": "17 4 * * *" }
+  ],
   "headers": [
     {
       "source": "/(.*)",

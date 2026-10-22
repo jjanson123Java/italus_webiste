@@ -78,3 +78,11 @@ For the resubscription path, use a labeled test address and verify this order:
 Official social URLs are still placeholders and should be replaced before promotional publishing. Pricing and feature claims should be reconfirmed against the application release.
 
 Source repository: `https://github.com/jjanson123Java/italus_webiste`.
+
+## Verified community gateway
+
+The Community page does not contain direct Beehiiv destination links. It requires a six-digit email code, affirmative age and versioned-disclosure acceptance, and then returns only a server-owned allowlisted Beehiiv destination. Community verification is separate from waitlist and newsletter consent.
+
+Required production variables are `COMMUNITY_OTP_SECRET`, `COMMUNITY_SESSION_SECRET`, `COMMUNITY_REQUEST_HASH_SECRET`, `RESEND_API_KEY`, `COMMUNITY_EMAIL_FROM`, `COMMUNITY_EMAIL_REPLY_TO`, and `CRON_SECRET`, in addition to the restricted `DATABASE_URL`. Keep `DATABASE_ADMIN_URL` local only. Apply the idempotent migration with `npm run migrate:community`, after generating and reviewing `docs/community-gateway-disclosure.md` and checking drift with `npm run check:community-terms`.
+
+Authenticate `community.italusbooks.com` with Resend before using `Italus Community <access@community.italusbooks.com>` as the sender. The daily Vercel Cron removes operational challenge, session, rate-limit, and access-event data according to the documented periods; it never deletes legal acceptance evidence. The reviewed future-registration copy is in `docs/italus-registration-and-legal-disclosures.md`. Its navigation control is deliberately disabled and no registration API is exposed during pre-launch.

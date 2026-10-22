@@ -1,4 +1,5 @@
 import { createWaitlistStore } from '../lib/waitlist-db.mjs';
+import { createCommunityStore } from '../lib/community-db.mjs';
 import {
   createRequestKey,
   escapeCsvCell,
@@ -34,7 +35,7 @@ function iso(value) {
   return Number.isNaN(date.getTime()) ? '' : date.toISOString();
 }
 
-function renderHtml(entries, count) {
+function renderHtml(entries, count, communityEvidence = []) {
   const rows = entries.map((item) => `<tr>
 <td>${escapeHtml(iso(item.createdAt))}</td>
 <td>${escapeHtml(item.name)}</td>
@@ -44,7 +45,8 @@ function renderHtml(entries, count) {
 <td>Marketing: ${item.marketingOptIn ? 'yes' : 'no'}</td>
 <td>Beehiiv: ${escapeHtml(item.beehiivSyncStatus || 'not_requested')}</td>
 </tr>`).join('');
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Italus waitlist administration</title><style>body{font:16px system-ui,sans-serif;max-width:1200px;margin:2rem auto;padding:0 1rem;color:#171a18}table{border-collapse:collapse;width:100%}caption{text-align:left;font-weight:700;margin:1rem 0}th,td{border:1px solid #bbb;padding:.55rem;text-align:left;vertical-align:top}th{background:#eee}.actions{display:flex;gap:1rem;align-items:center;flex-wrap:wrap}</style></head><body><main><h1>Italus waitlist</h1><div class="actions"><strong>${escapeHtml(count)} waitlist entries</strong><a href="?format=csv">Download CSV</a></div><table><caption>Newest submissions first</caption><thead><tr><th>Joined</th><th>Name</th><th>Email</th><th>Genre</th><th>Source</th><th>Consent</th><th>Newsletter</th></tr></thead><tbody>${rows}</tbody></table></main></body></html>`;
+  const evidenceRows = communityEvidence.map((item) => `<tr><td>${escapeHtml(iso(item.acceptedAt))}</td><td>${escapeHtml(item.email)}</td><td>${escapeHtml(item.status)}</td><td>${escapeHtml(item.termsVersion)}</td><td>${escapeHtml(item.latestEvent || '—')}</td><td>${escapeHtml(iso(item.latestEventAt))}</td></tr>`).join('');
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Italus waitlist administration</title><style>body{font:16px system-ui,sans-serif;max-width:1200px;margin:2rem auto;padding:0 1rem;color:#171a18}table{border-collapse:collapse;width:100%;margin-bottom:3rem}caption{text-align:left;font-weight:700;margin:1rem 0}th,td{border:1px solid #bbb;padding:.55rem;text-align:left;vertical-align:top}th{background:#eee}.actions{display:flex;gap:1rem;align-items:center;flex-wrap:wrap}</style></head><body><main><h1>Italus waitlist</h1><div class="actions"><strong>${escapeHtml(count)} waitlist entries</strong><a href="?format=csv">Download CSV</a></div><table><caption>Newest submissions first</caption><thead><tr><th>Joined</th><th>Name</th><th>Email</th><th>Genre</th><th>Source</th><th>Consent</th><th>Newsletter</th></tr></thead><tbody>${rows}</tbody></table><h2>Community acceptance evidence</h2><table><caption>Versioned, verified acceptances and latest access state</caption><thead><tr><th>Accepted</th><th>Email</th><th>Status</th><th>Terms</th><th>Latest event</th><th>Event time</th></tr></thead><tbody>${evidenceRows}</tbody></table></main></body></html>`;
 }
 
 function renderCsv(entries) {
@@ -59,7 +61,7 @@ function renderCsv(entries) {
   return `${lines.join('\r\n')}\r\n`;
 }
 
-export function createAdminWaitlistHandler({ store, env = process.env } = {}) {
+export function createAdminWaitlistHandler({ store, communityStore, env = process.env } = {}) {
   return async function adminWaitlistHandler(req, res) {
     setSecurityHeaders(res);
     if (req.method !== 'GET') {
@@ -92,7 +94,8 @@ export function createAdminWaitlistHandler({ store, env = process.env } = {}) {
         return send(res, 200, renderCsv(entries), 'text/csv; charset=utf-8');
       }
       const count = await store.countEntries();
-      return send(res, 200, renderHtml(entries, count), 'text/html; charset=utf-8');
+      const communityEvidence = communityStore ? await communityStore.listEvidence() : [];
+      return send(res, 200, renderHtml(entries, count, communityEvidence), 'text/html; charset=utf-8');
     } catch {
       return send(res, 503, 'Waitlist data is temporarily unavailable.');
     }
@@ -101,7 +104,7 @@ export function createAdminWaitlistHandler({ store, env = process.env } = {}) {
 
 export default async function handler(req, res) {
   try {
-    const adminHandler = createAdminWaitlistHandler({ store: createWaitlistStore(), env: process.env });
+    const adminHandler = createAdminWaitlistHandler({ store: createWaitlistStore(), communityStore: createCommunityStore(), env: process.env });
     return await adminHandler(req, res);
   } catch {
     setSecurityHeaders(res);

@@ -50,6 +50,7 @@ function setup(overrides = {}) {
   };
   const handler = createAdminWaitlistHandler({
     store,
+    communityStore: overrides.communityStore,
     env: {
       WAITLIST_ADMIN_USERNAME: 'admin',
       WAITLIST_ADMIN_PASSWORD: 'correct-password',
@@ -59,6 +60,15 @@ function setup(overrides = {}) {
   });
   return { handler, calls };
 }
+
+test('renders separate escaped community acceptance evidence without security digests', async () => {
+  const { handler } = setup({ communityStore: { async listEvidence() { return [{ email: '<author@example.com>', status: 'active', termsVersion: '1.0', acceptedAt: new Date('2026-10-22T12:00:00Z'), latestEvent: 'trusted_access', latestEventAt: new Date('2026-10-22T13:00:00Z') }]; } } });
+  const res = await invoke(handler, request({ headers: { authorization: auth(), 'x-forwarded-for': '203.0.113.9' } }));
+  assert.match(res.body, /Community acceptance evidence/);
+  assert.match(res.body, /&lt;author@example\.com&gt;/);
+  assert.match(res.body, /trusted_access/);
+  assert.doesNotMatch(res.body, /token_digest|request_fingerprint|user_agent_hash/);
+});
 
 async function invoke(handler, req) {
   const res = response();
