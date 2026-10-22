@@ -109,6 +109,8 @@ test('subscription confirmation page completes the newsletter journey without an
   assert.match(html, /subscribed to Writer(?:&rsquo;|&#8217;|’)s Block by Italus Studio/i);
   assert.match(html, /href="index\.html"[^>]*>Return to Italus Studio</i);
   assert.match(html, /href="updates\.html"[^>]*>Explore Italus updates</i);
+  assert.match(html, /<nav[^>]+aria-label="Primary"[\s\S]*href="community\.html"[\s\S]*<\/nav>/);
+  assert.match(html, /<footer[\s\S]*href="community\.html"[\s\S]*<\/footer>/);
   assert.doesNotMatch(html, /<form\b/i);
 });
 
