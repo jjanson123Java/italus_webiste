@@ -15,7 +15,8 @@ const pages = [
   'about.html',
   'updates.html',
   'contact.html',
-  'studio.html'
+  'studio.html',
+  'community.html'
 ];
 
 test('validates realistic email input', () => {
@@ -62,8 +63,37 @@ for (const page of pages) {
     assert.match(html, /<nav[^>]+aria-label="Primary"/);
     assert.match(html, /<main/);
     assert.match(html, /href="updates\.html#social"/);
+    assert.match(html, /href="community\.html"/);
   });
 }
+
+test('community gateway links each card to its matching Beehiiv channel', async () => {
+  const html = await readFile(join(root, 'community.html'), 'utf8');
+  const destinations = [
+    'https://writers-block.beehiiv.com/community/channels/writer-s-room',
+    'https://writers-block.beehiiv.com/community/channels/italus-bookshelf',
+    'https://writers-block.beehiiv.com/community/channels/manuscript-lab',
+    'https://writers-block.beehiiv.com/community/channels/worlds-characters'
+  ];
+
+  for (const destination of destinations) {
+    assert.match(html, new RegExp(`href="${destination}"[^>]*target="_blank"[^>]*rel="noopener noreferrer"`));
+  }
+});
+
+test('community is ordered between Pricing and Social in every primary navigation', async () => {
+  for (const page of pages) {
+    const html = await readFile(join(root, page), 'utf8');
+    assert.match(html, /<a[^>]*href="pricing\.html"[^>]*>Pricing<\/a><\/li><li><a[^>]*href="community\.html"[^>]*>Community<\/a><\/li><li><a[^>]*href="updates\.html#social"[^>]*>Social<\/a>/);
+  }
+});
+
+test('every footer provides a Community entry point', async () => {
+  for (const page of pages) {
+    const html = await readFile(join(root, page), 'utf8');
+    assert.match(html, /<footer[\s\S]*href="community\.html"[\s\S]*<\/footer>/);
+  }
+});
 
 test('studio page labels the application as a future preview', async () => {
   const html = await readFile(join(root, 'studio.html'), 'utf8');
