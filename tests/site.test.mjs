@@ -67,18 +67,14 @@ for (const page of pages) {
   });
 }
 
-test('community gateway links each card to its matching Beehiiv channel', async () => {
+test('community gateway routes every card through its internal verified channel slug', async () => {
   const html = await readFile(join(root, 'community.html'), 'utf8');
-  const destinations = [
-    'https://writers-block.beehiiv.com/community/channels/writer-s-room',
-    'https://writers-block.beehiiv.com/community/channels/italus-bookshelf',
-    'https://writers-block.beehiiv.com/community/channels/manuscript-lab',
-    'https://writers-block.beehiiv.com/community/channels/worlds-characters'
-  ];
+  const destinations = ['writers-room', 'italus-bookshelf', 'manuscript-lab', 'worlds-characters'];
 
   for (const destination of destinations) {
-    assert.match(html, new RegExp(`href="${destination}"[^>]*target="_blank"[^>]*rel="noopener noreferrer"`));
+    assert.match(html, new RegExp(`data-community-channel="${destination}"`));
   }
+  assert.doesNotMatch(html, /href="https:\/\/writers-block\.beehiiv\.com\/community/);
 });
 
 test('community is ordered between Pricing and Social in every primary navigation', async () => {
