@@ -139,3 +139,16 @@ test('administrator route is absent from public discovery and navigation', async
     assert.doesNotMatch(html, /href=["'][^"']*admin-waitlist/);
   }
 });
+
+
+test('social page presents six accessible channels including TikTok and matching content', async () => {
+  const html = await readFile(join(root, 'updates.html'), 'utf8');
+  const css = await readFile(join(root, 'styles.css'), 'utf8');
+  assert.equal((html.match(/class="social-link"/g) || []).length, 6);
+  assert.match(html, /<a class="social-link" href="#tiktok" aria-label="Italus TikTok channel placeholder">/);
+  assert.match(html, /<span>TikTok<\/span><\/a>/);
+  assert.match(html, /<article class="card" id="tiktok"><h3>Short-form studio demos<\/h3>/);
+  assert.match(html, /Planned TikTok clips will spotlight canon controls/);
+  assert.doesNotMatch(html, /href="https:\/\/[^"]*tiktok\.com/i);
+  assert.match(css, /\.social-grid \{[^}]*grid-template-columns: repeat\(3, 1fr\)/);
+});
