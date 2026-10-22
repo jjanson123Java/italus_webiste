@@ -102,11 +102,31 @@ export function buildCommunityMigrationStatements(runtimeRole, terms = COMMUNITY
     'CREATE INDEX IF NOT EXISTS community_sessions_email_idx ON italus_community.browser_sessions (email, expires_at DESC)',
     'CREATE INDEX IF NOT EXISTS community_events_email_idx ON italus_community.access_events (email, occurred_at DESC)',
     'CREATE INDEX IF NOT EXISTS community_rate_limits_lookup_idx ON italus_community.rate_limits (request_key, action, attempted_at DESC)',
+    `WITH ranked AS (
+      SELECT id, ROW_NUMBER() OVER (PARTITION BY email ORDER BY created_at DESC, id DESC) AS position
+      FROM italus_community.email_challenges WHERE consumed_at IS NULL
+    ) UPDATE italus_community.email_challenges SET consumed_at = NOW()
+      WHERE id IN (SELECT id FROM ranked WHERE position > 1)`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS community_one_active_challenge
+      ON italus_community.email_challenges (email) WHERE consumed_at IS NULL`,
+    `DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1 FROM italus_community.terms_versions
+          WHERE version = '${terms.version}' AND (
+            document_sha256 <> '${terms.documentSha256}' OR
+            effective_at <> '${effective}'::timestamptz OR
+            document_path <> 'docs/community-gateway-disclosure.md'
+          )
+        ) THEN
+          RAISE EXCEPTION 'Existing community terms version ${terms.version} does not match the canonical hash, effective date, or document path';
+        END IF;
+      END $$`,
     `UPDATE italus_community.terms_versions SET is_current = FALSE WHERE is_current AND version <> '${terms.version}'`,
     `INSERT INTO italus_community.terms_versions (version, effective_at, document_sha256, document_path, is_current)
       VALUES ('${terms.version}', '${effective}', '${terms.documentSha256}', 'docs/community-gateway-disclosure.md', TRUE)
-      ON CONFLICT (version) DO UPDATE SET effective_at = EXCLUDED.effective_at,
-        document_sha256 = EXCLUDED.document_sha256, document_path = EXCLUDED.document_path, is_current = TRUE`,
+      ON CONFLICT (version) DO NOTHING`,
+    `UPDATE italus_community.terms_versions SET is_current = TRUE WHERE version = '${terms.version}'`,
     'REVOKE ALL ON SCHEMA italus_community FROM PUBLIC',
     'REVOKE ALL ON ALL TABLES IN SCHEMA italus_community FROM PUBLIC',
     'REVOKE ALL ON ALL SEQUENCES IN SCHEMA italus_community FROM PUBLIC',

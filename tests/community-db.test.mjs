@@ -19,6 +19,7 @@ test('rate limiting records only requests below the supplied fixed window limit'
   const sql = fakeSql((text) => text.includes('community_rate_limit') ? [{ allowed: true }] : []);
   const store = createCommunityStore({ sql, now: () => now });
   assert.equal(await store.checkRateLimit('opaque', 'otp_start_ip', 20, 60), true);
+  assert.match(sql.calls.at(-1).text, /pg_advisory_xact_lock/i);
   assert.match(sql.calls.at(-1).text, /total < \$4/i);
   assert.deepEqual(sql.calls.at(-1).params.slice(0, 4), ['opaque', 'otp_start_ip', new Date('2026-10-22T17:00:00.000Z'), 20]);
 });
@@ -36,6 +37,8 @@ test('replacing a challenge invalidates every older active challenge for the nor
   assert.equal(challenge.id, 'challenge_1');
   assert.match(sql.calls.at(-1).text, /UPDATE italus_community\.email_challenges[\s\S]*consumed_at[\s\S]*INSERT INTO italus_community\.email_challenges/i);
   assert.match(sql.calls.at(-1).text, /WHERE email = \$2 AND consumed_at IS NULL/i);
+  assert.match(sql.calls.at(-1).text, /resend_after <= \$9/i);
+  assert.match(sql.calls.at(-1).text, /pg_advisory_xact_lock/i);
 });
 
 test('successful verification is one atomic statement that consumes once and appends evidence', async () => {
@@ -50,6 +53,7 @@ test('successful verification is one atomic statement that consumes once and app
   assert.equal(result.email, 'author@example.com');
   const statement = sql.calls.at(-1).text;
   assert.match(statement, /WITH consumed AS[\s\S]*UPDATE italus_community\.email_challenges/i);
+  assert.match(statement, /(?:JOIN|FROM) italus_community\.terms_versions[\s\S]*is_current/i);
   assert.match(statement, /INSERT INTO italus_community\.terms_acceptances/i);
   assert.match(statement, /ON CONFLICT \(email, terms_version\) DO NOTHING/i);
   assert.match(statement, /INSERT INTO italus_community\.browser_sessions/i);
@@ -65,6 +69,7 @@ test('trusted session lookup requires current terms, unexpired session, and acti
   assert.equal(session.status, 'active');
   assert.match(sql.calls.at(-1).text, /expires_at > \$3/i);
   assert.match(sql.calls.at(-1).text, /COALESCE\(s\.status, 'active'\) = 'active'/i);
+  assert.match(sql.calls.at(-1).text, /JOIN italus_community\.terms_versions[\s\S]*is_current/i);
 });
 
 test('cleanup preserves acceptance evidence while applying each operational retention boundary', async () => {

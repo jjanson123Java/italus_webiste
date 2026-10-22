@@ -1,6 +1,6 @@
 # Italus Community Gateway, Rules, and Third-Party Disclosure
 
-**Version:** 1.0  
+**Version:** 1.1
 **Effective date:** October 22, 2026  
 **Applies to:** Writer's Room, Italus Bookshelf, Manuscript Lab, and Worlds & Characters
 
@@ -27,7 +27,7 @@ By selecting the agreement box and choosing **Agree and continue**, you acknowle
 - Beehiiv processes information needed to provide its community service. Italus processes information needed to operate and moderate the Italus community, document acceptance, protect the gateway, and resolve reports or disputes.
 - Your use of Beehiiv is also subject to the [Beehiiv Community Terms](https://www.beehiiv.com/community-terms), [Beehiiv Terms of Use](https://www.beehiiv.com/tou), [Beehiiv Privacy Policy](https://www.beehiiv.com/privacy), and [Beehiiv Acceptable Use Policy](https://www.beehiiv.com/aup).
 - Italus cannot control or guarantee Beehiiv's availability, security, retention practices, or independent enforcement decisions. Any limitation of responsibility applies only to the fullest extent permitted by applicable law.
-- Italus retains community acceptance records for six years after the later of your last community access or the closure of a related dispute, unless a longer period is legally required. Access-event records are ordinarily retained for 12 months. Expired one-time-code records are removed within 24 hours, and expired or revoked trusted-browser sessions are removed within 30 days. Additional information is provided in the [Italus Privacy Policy](https://italusbooks.com/privacy.html).
+- Italus retains community acceptance records for at least six years after acceptance. A related dispute, legal obligation, preservation request, or other legitimate need may require longer retention. These acceptance records are not automatically deleted at the six-year mark. Access-event records are ordinarily retained for 12 months. Expired one-time-code records are removed within 24 hours, and expired or revoked trusted-browser sessions are removed within 30 days. Additional information is provided in the [Italus Privacy Policy](https://italusbooks.com/privacy.html).
 
 ## 3. Your Content and Privacy
 
@@ -98,7 +98,7 @@ Reasoned disagreement and constructive criticism are welcome. Personal attacks a
 
 ## Acceptance Presented in the Gateway
 
-> I confirm that I am at least 18 years old. I have read and agree to the Italus Community Gateway, Rules, and Third-Party Disclosure, version 1.0. I understand that the community is hosted by Beehiiv, that Beehiiv's separate terms and privacy practices apply, and that Italus will record my verified acceptance.
+> I confirm that I am at least 18 years old. I have read and agree to the Italus Community Gateway, Rules, and Third-Party Disclosure, version 1.1. I understand that the community is hosted by Beehiiv, that Beehiiv's separate terms and privacy practices apply, and that Italus will record my verified acceptance.
 
 **Primary action:** Agree and continue to the selected community  
 **Secondary action:** Cancel and stay on Italus
@@ -107,7 +107,7 @@ Reasoned disagreement and constructive criticism are welcome. Personal attacks a
 
 ## Development and Legal Review Notes
 
-- This Markdown file is the review copy for the Italus development team and the canonical disclosure text for version 1.0.
+- This Markdown file is the review copy for the Italus development team and the canonical disclosure text for version 1.1.
 - Update the version and effective date whenever a material term changes.
 - The production acceptance record must store this document's SHA-256 hash after line endings are normalized to LF.
 - The displayed disclosure, acceptance statement, stored version, and stored hash must originate from this versioned document and must not drift independently.

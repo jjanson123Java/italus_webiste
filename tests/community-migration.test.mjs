@@ -20,7 +20,9 @@ test('community migration creates versioned evidence and operational tables idem
   }
   assert.match(sql, /CREATE UNIQUE INDEX IF NOT EXISTS terms_versions_one_current/i);
   assert.match(sql, /INSERT INTO italus_community\.terms_versions/i);
-  assert.match(sql, /ON CONFLICT \(version\) DO UPDATE/i);
+  assert.match(sql, /ON CONFLICT \(version\) DO NOTHING/i);
+  assert.match(sql, /RAISE EXCEPTION[\s\S]*hash/i);
+  assert.match(sql, /CREATE UNIQUE INDEX IF NOT EXISTS community_one_active_challenge/i);
   assert.match(sql, new RegExp(terms.documentSha256));
 });
 

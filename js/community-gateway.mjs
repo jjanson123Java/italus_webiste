@@ -12,10 +12,11 @@ export function requestTrustedCommunityAccess(channel, fetchImpl) { return post(
 
 export function initCommunityGateway(root = document) {
   const dialog = root.querySelector('[data-community-dialog]'); if (!dialog) return;
-  const terms = dialog.querySelector('[data-community-terms]'); const emailForm = dialog.querySelector('[data-community-email-form]');
+  const terms = dialog.querySelector('[data-community-terms]'); const acceptanceText = dialog.querySelector('[data-community-acceptance-text]'); const emailForm = dialog.querySelector('[data-community-email-form]');
   const codeForm = dialog.querySelector('[data-community-code-form]'); const status = dialog.querySelector('[data-community-status]');
   const agreement = codeForm.elements.namedItem('accepted'); const age = codeForm.elements.namedItem('ageConfirmed'); const submit = codeForm.querySelector('button[type="submit"]');
   terms.innerHTML = COMMUNITY_TERMS.html;
+  acceptanceText.textContent = COMMUNITY_TERMS.acceptanceText;
   let channel = 'community'; let challengeId = null; let trigger = null;
   const announce = (message, state = '') => { status.textContent = message; status.dataset.state = state; };
   const close = () => { dialog.close(); trigger?.focus(); };

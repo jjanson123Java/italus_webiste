@@ -20,7 +20,8 @@ export function createCommunityAccessStartHandler({ store, mailer, env, now = ()
       const requestAllowed = await store.checkRateLimit(context.requestFingerprint, 'otp_start_ip', 20, 60);
       if (!emailAllowed || !requestAllowed) return send(res, 429, { ok: false, message: 'Please wait before trying again.' });
       const id = randomId(); const code = createCode(); const current = now();
-      await store.replaceChallenge({ id, email, codeDigest: digestOtp(code, id, env.COMMUNITY_OTP_SECRET), termsVersion: COMMUNITY_TERMS.version, documentSha256: COMMUNITY_TERMS.documentSha256, channel, expiresAt: new Date(current.getTime() + 10 * 60_000), resendAfter: new Date(current.getTime() + 60_000), requestFingerprint: context.requestFingerprint });
+      const challenge = await store.replaceChallenge({ id, email, codeDigest: digestOtp(code, id, env.COMMUNITY_OTP_SECRET), termsVersion: COMMUNITY_TERMS.version, documentSha256: COMMUNITY_TERMS.documentSha256, channel, expiresAt: new Date(current.getTime() + 10 * 60_000), resendAfter: new Date(current.getTime() + 60_000), requestFingerprint: context.requestFingerprint });
+      if (!challenge) return send(res, 429, { ok: false, message: 'Please wait before trying again.' });
       await mailer.sendCode({ email, code, channel: getCommunityChannelLabel(channel) });
       return send(res, 200, { ok: true, challengeId: id, message: GENERIC });
     } catch { logger.error('Community verification start failed.'); return send(res, 500, { ok: false, message: 'Unable to send a code right now. Please try again.' }); }

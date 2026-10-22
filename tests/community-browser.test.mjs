@@ -10,9 +10,12 @@ test('community page gates all five internal slugs and embeds the complete versi
   for (const slug of ['community', 'writers-room', 'italus-bookshelf', 'manuscript-lab', 'worlds-characters']) assert.match(html, new RegExp(`data-community-channel="${slug}"`));
   assert.match(html, /data-community-dialog/);
   assert.match(html, /data-community-terms/);
+  assert.match(html, /data-community-acceptance-text/);
   assert.match(html, /disabled[^>]*>Agree and continue/);
   assert.match(html, /I confirm that I am at least 18 years old/);
   assert.match(html, /js\/community-gateway\.mjs/);
+  const script = await readFile(new URL('js/community-gateway.mjs', root), 'utf8');
+  assert.match(script, /COMMUNITY_TERMS\.acceptanceText/);
 });
 
 test('browser client calls only same-origin gateway endpoints', async () => {
@@ -32,4 +35,7 @@ test('privacy notice documents community verification separately from marketing'
   assert.match(html, /Resend/);
   assert.match(html, /Neon/);
   assert.match(html, /30 days/);
+  assert.match(html, /at least six years/i);
+  const disclosure = await readFile(new URL('docs/community-gateway-disclosure.md', root), 'utf8');
+  assert.match(disclosure, /at least six years/i);
 });

@@ -10,7 +10,9 @@ export function createCommunityAccessVerifyHandler({ store, env, now = () => new
     if (body?.accepted !== true || body?.ageConfirmed !== true) return send(res, 400, { ok: false, message: 'You must confirm the disclosure and that you are at least 18.' });
     if (!/^[\w-]{1,100}$/.test(String(body.challengeId ?? '')) || !/^\d{6}$/.test(String(body.code ?? ''))) return send(res, 400, { ok: false, message: 'The verification code is invalid or expired.' });
     try {
-      const context = requestContext(req, env); const challenge = await store.findChallenge(body.challengeId); const current = now();
+      const context = requestContext(req, env);
+      if (!(await store.checkRateLimit(context.requestFingerprint, 'otp_verify_ip', 10, 15))) return send(res, 429, { ok: false, message: 'Please wait before trying again.' });
+      const challenge = await store.findChallenge(body.challengeId); const current = now();
       const currentTerms = challenge?.termsVersion === COMMUNITY_TERMS.version && challenge?.documentSha256 === COMMUNITY_TERMS.documentSha256;
       const usable = challenge && !challenge.consumedAt && challenge.failedAttempts < 5 && challenge.expiresAt > current && currentTerms;
       if (!usable || digestCode(body.code, challenge.id, env.COMMUNITY_OTP_SECRET) !== challenge.codeDigest) {
